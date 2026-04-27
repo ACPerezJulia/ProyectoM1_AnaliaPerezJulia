@@ -210,11 +210,9 @@ function renderGrid() {
     card.setAttribute('tabindex', '0');
     card.setAttribute('aria-label', `Color ${code}${color.locked ? ', bloqueado' : ''}. Clic para copiar.`);
 
-    // Drag & drop — solo si el color no está bloqueado
-    if (!color.locked) {
-      card.setAttribute('draggable', 'true');
-      card.classList.add('draggable');
-    }
+    // Drag & drop — todas las tarjetas son arrastrables (el bloqueo protege de regeneración, no de reordenamiento)
+    card.setAttribute('draggable', 'true');
+    card.classList.add('draggable');
 
     // Swatch
     const swatch = document.createElement('div');
@@ -307,24 +305,18 @@ function renderGrid() {
     });
 
     /* ─── DRAG & DROP ─── */
-    if (!color.locked) {
-      card.addEventListener('dragstart', e => {
-        // Guarda el índice de origen en el dataTransfer
-        e.dataTransfer.setData('text/plain', String(index));
-        e.dataTransfer.effectAllowed = 'move';
-        // Pequeño delay para que el navegador capture el snapshot antes de aplicar la clase
-        setTimeout(() => card.classList.add('dragging'), 0);
-      });
+    card.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', String(index));
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => card.classList.add('dragging'), 0);
+    });
 
-      card.addEventListener('dragend', () => {
-        card.classList.remove('dragging');
-        // Limpia cualquier resaltado de destino que haya quedado
-        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-      });
-    }
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
 
     card.addEventListener('dragover', e => {
-      if (color.locked) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
       card.classList.add('drag-over');
@@ -341,8 +333,7 @@ function renderGrid() {
       const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
       const toIndex   = index;
 
-      // No hacer nada si es la misma posición o el destino está bloqueado
-      if (fromIndex === toIndex || color.locked) return;
+      if (fromIndex === toIndex) return;
 
       // Intercambiar en state.colors
       const temp              = state.colors[fromIndex];
