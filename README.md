@@ -1,4 +1,4 @@
-# Paleta · Generador de Colores
+# Paleta · Generador de Colores para ColorFly Studio
 
 Herramienta web para generar paletas de colores de forma rápida e intuitiva. Desarrollada para **Colorfly Studio**, agencia de branding que necesitaba estandarizar sus propuestas visuales.
 
