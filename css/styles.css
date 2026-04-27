@@ -608,7 +608,15 @@ body {
   background: rgba(245,100,200,0.1);
 }
 
-/* Botón desbloquear todo */
+/* Segmentado de armonía — puede ser más largo, permite wrap */
+.segmented--harmony {
+  flex-wrap: wrap;
+}
+
+.segmented--harmony .seg-btn {
+  font-size: 0.7rem;
+  padding: 0.35rem 0.6rem;
+}
 .btn-unlock-all {
   background: none;
   border: 1px solid var(--border);
@@ -864,6 +872,25 @@ kbd.footer-key {
   .palette-grid {
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   }
+}
+
+/* =============================================
+   DRAG & DROP
+   ============================================= */
+.color-card.draggable { cursor: grab; }
+.color-card.draggable:active { cursor: grabbing; }
+
+.color-card.dragging {
+  opacity: 0.4;
+  transform: scale(0.96);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.color-card.drag-over {
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: 0 0 0 2px var(--accent), var(--shadow);
+  border-color: var(--accent);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 /* =============================================

@@ -10,10 +10,11 @@
    ESTADO DE LA APLICACIÓN
 ─────────────────────────────────────────── */
 const state = {
-  size:    6,         // número de colores activos
-  format: 'hex',     // 'hex' | 'hsl'
-  colors: [],        // [{ h, s, l, locked }]
-  saved:  []         // paletas guardadas [{ id, colors[], date }]
+  size:    6,           // número de colores activos
+  format: 'hex',       // 'hex' | 'hsl'
+  harmony: 'random',   // 'random' | 'analogous' | 'complementary' | 'triadic'
+  colors: [],          // [{ h, s, l, locked }]
+  saved:  []           // paletas guardadas [{ id, colors[], date }]
 };
 
 /* ───────────────────────────────────────────
@@ -72,21 +73,118 @@ function textOnColor(l) {
 }
 
 /* ───────────────────────────────────────────
-   GENERACIÓN DE PALETA
+   GENERACIÓN DE PALETA Y ARMONÍAS
 ─────────────────────────────────────────── */
 
-/** Rellena state.colors respetando los bloqueados */
+/**
+ * Genera un color base con s y l aleatorios dentro de rangos seguros.
+ * El tono (h) se puede pasar o se genera aleatorio.
+ */
+function makeColor(h = Math.floor(Math.random() * 360)) {
+  return {
+    h,
+    s: Math.floor(40 + Math.random() * 50),   // 40–90%
+    l: Math.floor(35 + Math.random() * 35),   // 35–70%
+    locked: false
+  };
+}
+
+/** Mantiene h dentro de 0–359 */
+function wrapHue(h) {
+  return ((h % 360) + 360) % 360;
+}
+
+/**
+ * Genera un array de `count` colores según la armonía activa.
+ * Los colores bloqueados se preservan.
+ */
 function generateColors() {
-  const newColors = [];
-  for (let i = 0; i < state.size; i++) {
-    if (state.colors[i] && state.colors[i].locked) {
-      // conserva el color bloqueado
-      newColors.push(state.colors[i]);
-    } else {
-      newColors.push(randomColor());
-    }
+  const count     = state.size;
+  const harmony   = state.harmony;
+  const generated = buildHarmony(harmony, count);
+
+  // Respeta los colores bloqueados
+  state.colors = generated.map((color, i) =>
+    state.colors[i] && state.colors[i].locked ? state.colors[i] : color
+  );
+}
+
+/** Construye el array de colores según el tipo de armonía */
+function buildHarmony(harmony, count) {
+  if (harmony === 'random') return buildRandom(count);
+  if (harmony === 'analogous') return buildAnalogous(count);
+  if (harmony === 'complementary') return buildComplementary(count);
+  if (harmony === 'triadic') return buildTriadic(count);
+  return buildRandom(count);
+}
+
+/** ALEATORIO — cada color completamente independiente */
+function buildRandom(count) {
+  return Array.from({ length: count }, () => makeColor());
+}
+
+/**
+ * ANÁLOGOS — colores vecinos en la rueda.
+ * Se parte de un tono base y se distribuyen los demás
+ * en un arco de ±60° alrededor de él, con leve variación
+ * de s y l para que no sean todos idénticos.
+ */
+function buildAnalogous(count) {
+  const baseH  = Math.floor(Math.random() * 360);
+  const spread = 60;  // arco total en grados
+  return Array.from({ length: count }, (_, i) => {
+    const step = count > 1 ? (spread / (count - 1)) : 0;
+    const h    = wrapHue(baseH - spread / 2 + i * step);
+    return {
+      h,
+      s: Math.floor(50 + Math.random() * 35),
+      l: Math.floor(38 + Math.random() * 28),
+      locked: false
+    };
+  });
+}
+
+/**
+ * COMPLEMENTARIOS — dos polos opuestos (180°) más variaciones
+ * de luminosidad y saturación alrededor de cada polo.
+ * Mitad de colores en torno al tono base, mitad en torno al opuesto.
+ */
+function buildComplementary(count) {
+  const baseH  = Math.floor(Math.random() * 360);
+  const compH  = wrapHue(baseH + 180);
+  const half   = Math.ceil(count / 2);
+  const colors = [];
+
+  for (let i = 0; i < count; i++) {
+    const h    = i < half ? baseH : compH;
+    const jitter = (Math.random() - 0.5) * 20;  // ±10° de variación
+    colors.push({
+      h: wrapHue(h + jitter),
+      s: Math.floor(50 + Math.random() * 40),
+      l: Math.floor(30 + Math.random() * 40),
+      locked: false
+    });
   }
-  state.colors = newColors;
+  return colors;
+}
+
+/**
+ * TRIÁDICOS — tres tonos equidistantes (120° entre sí).
+ * Los colores se distribuyen en grupos alrededor de cada vértice.
+ */
+function buildTriadic(count) {
+  const baseH   = Math.floor(Math.random() * 360);
+  const roots   = [baseH, wrapHue(baseH + 120), wrapHue(baseH + 240)];
+  return Array.from({ length: count }, (_, i) => {
+    const root   = roots[i % 3];
+    const jitter = (Math.random() - 0.5) * 24;  // ±12° de variación
+    return {
+      h: wrapHue(root + jitter),
+      s: Math.floor(45 + Math.random() * 45),
+      l: Math.floor(35 + Math.random() * 35),
+      locked: false
+    };
+  });
 }
 
 /* ───────────────────────────────────────────
@@ -111,6 +209,12 @@ function renderGrid() {
     card.setAttribute('role', 'listitem');
     card.setAttribute('tabindex', '0');
     card.setAttribute('aria-label', `Color ${code}${color.locked ? ', bloqueado' : ''}. Clic para copiar.`);
+
+    // Drag & drop — solo si el color no está bloqueado
+    if (!color.locked) {
+      card.setAttribute('draggable', 'true');
+      card.classList.add('draggable');
+    }
 
     // Swatch
     const swatch = document.createElement('div');
@@ -201,6 +305,54 @@ function renderGrid() {
 
       showToast(isNowLocked ? '🔒 Color bloqueado' : '🔓 Color desbloqueado');
     });
+
+    /* ─── DRAG & DROP ─── */
+    if (!color.locked) {
+      card.addEventListener('dragstart', e => {
+        // Guarda el índice de origen en el dataTransfer
+        e.dataTransfer.setData('text/plain', String(index));
+        e.dataTransfer.effectAllowed = 'move';
+        // Pequeño delay para que el navegador capture el snapshot antes de aplicar la clase
+        setTimeout(() => card.classList.add('dragging'), 0);
+      });
+
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        // Limpia cualquier resaltado de destino que haya quedado
+        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      });
+    }
+
+    card.addEventListener('dragover', e => {
+      // Necesario para que el drop sea válido
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      // Solo resalta si no es la misma card y el destino no está bloqueado
+      if (!color.locked) card.classList.add('drag-over');
+    });
+
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drag-over');
+    });
+
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+
+      const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+      const toIndex   = index;
+
+      // No hacer nada si es la misma posición o el destino está bloqueado
+      if (fromIndex === toIndex || color.locked) return;
+
+      // Intercambiar en state.colors
+      const temp              = state.colors[fromIndex];
+      state.colors[fromIndex] = state.colors[toIndex];
+      state.colors[toIndex]   = temp;
+
+      renderGrid();
+      showToast('↕ Colores reordenados');
+    });
   });
 
   // Botones de acción (solo si no existen ya)
@@ -234,86 +386,88 @@ function renderGrid() {
 ─────────────────────────────────────────── */
 
 function exportPalettePNG() {
-  const colors  = state.colors;
-  const count   = colors.length;
+  const colors = state.colors;
+  const count  = colors.length;
 
-  // Layout: cuántas columnas según cantidad de colores
-  const cols    = count <= 6 ? 3 : count === 8 ? 4 : 3;
-  const rows    = Math.ceil(count / cols);
+  // Dimensiones lógicas (lo que "parece" en pantalla)
+  const STRIP_W  = 160;   // ancho de cada tira de color
+  const SWATCH_H = 280;   // altura del bloque de color
+  const LABEL_H  = 52;    // altura del área de texto
+  const PADDING  = 12;    // espacio entre tiras
+  const MARGIN   = 24;    // margen exterior
 
-  // Dimensiones de cada celda
-  const CELL_W  = 200;
-  const SWATCH_H = 180;
-  const LABEL_H  = 48;
-  const CELL_H  = SWATCH_H + LABEL_H;
-  const PADDING  = 16;  // espacio entre celdas
-  const MARGIN   = 24;  // margen exterior
+  const canvasW = MARGIN * 2 + count * STRIP_W + (count - 1) * PADDING;
+  const canvasH = MARGIN * 2 + SWATCH_H + LABEL_H;
 
-  // Tamaño total del canvas
-  const canvasW = cols * CELL_W + (cols - 1) * PADDING + MARGIN * 2;
-  const canvasH = rows * CELL_H + (rows - 1) * PADDING + MARGIN * 2;
+  // Factor de escala para pantallas HiDPI/Retina — texto nítido
+  const DPR = window.devicePixelRatio || 1;
 
-  // Crear canvas en memoria (no se inserta en el DOM)
   const canvas  = document.createElement('canvas');
-  canvas.width  = canvasW;
-  canvas.height = canvasH;
-  const ctx     = canvas.getContext('2d');
+  canvas.width  = canvasW * DPR;
+  canvas.height = canvasH * DPR;
 
-  // Fondo según el tema activo
+  const ctx = canvas.getContext('2d');
+
+  // Escalar el contexto para que todo dibuje al doble de resolución
+  ctx.scale(DPR, DPR);
+
+  // Fondo según tema activo
   const isLight = document.body.classList.contains('light');
-  ctx.fillStyle = isLight ? '#f5f4f0' : '#0e0e10';
+  ctx.fillStyle = isLight ? '#f5f4f0' : '#17171b';
   ctx.fillRect(0, 0, canvasW, canvasH);
 
-  // Dibuja cada color
   colors.forEach((color, index) => {
-    const col = index % cols;
-    const row = Math.floor(index / cols);
+    const x = MARGIN + index * (STRIP_W + PADDING);
+    const y = MARGIN;
 
-    const x = MARGIN + col * (CELL_W + PADDING);
-    const y = MARGIN + row * (CELL_H + PADDING);
-
-    // Swatch de color
+    // Swatch con esquinas redondeadas solo arriba
     const hsl = `hsl(${color.h}, ${color.s}%, ${color.l}%)`;
     ctx.fillStyle = hsl;
-
-    // Rounded rect para el swatch
-    roundRect(ctx, x, y, CELL_W, SWATCH_H, 16);
+    roundRect(ctx, x, y, STRIP_W, SWATCH_H, { tl: 14, tr: 14, bl: 0, br: 0 });
     ctx.fill();
 
-    // Fondo de la etiqueta (mismo color que el fondo de la imagen)
-    ctx.fillStyle = isLight ? '#f5f4f0' : '#0e0e10';
-    ctx.fillRect(x, y + SWATCH_H, CELL_W, LABEL_H);
+    // Fondo de la etiqueta — mismo color que el fondo pero ligeramente diferente
+    ctx.fillStyle = isLight ? '#ffffff' : '#0e0e10';
+    roundRect(ctx, x, y + SWATCH_H, STRIP_W, LABEL_H, { tl: 0, tr: 0, bl: 14, br: 14 });
+    ctx.fill();
 
-    // Código del color (usa el formato activo)
-    const code    = formatColor(color);
-    const textClr = isLight ? '#1a1a1e' : '#e8e8f0';
-    ctx.fillStyle = textClr;
-    ctx.font      = 'bold 14px "DM Mono", "Courier New", monospace';
-    ctx.textAlign = 'center';
+    // Separador sutil entre swatch y etiqueta
+    ctx.fillStyle = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)';
+    ctx.fillRect(x, y + SWATCH_H, STRIP_W, 1);
+
+    // Código del color
+    const code = formatColor(color);
+    ctx.fillStyle  = isLight ? '#1a1a1e' : '#e8e8f0';
+    ctx.font       = '500 13px "DM Mono", "Courier New", monospace';
+    ctx.textAlign  = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(code, x + CELL_W / 2, y + SWATCH_H + LABEL_H / 2);
+    ctx.fillText(code, x + STRIP_W / 2, y + SWATCH_H + LABEL_H / 2);
   });
 
-  // Convertir canvas a PNG y disparar descarga
-  const dataURL  = canvas.toDataURL('image/png');
-  const link     = document.createElement('a');
-  link.href      = dataURL;
-  link.download  = `paleta-${Date.now()}.png`;
+  // Descargar como PNG
+  const link    = document.createElement('a');
+  link.href     = canvas.toDataURL('image/png');
+  link.download = `paleta-${Date.now()}.png`;
   link.click();
 
   showToast('🖼 PNG exportado');
 }
 
-/** Dibuja un rectángulo con esquinas redondeadas en el canvas */
-function roundRect(ctx, x, y, width, height, radius) {
+/** Rectángulo con radio independiente por esquina */
+function roundRect(ctx, x, y, w, h, r) {
+  const { tl = 0, tr = 0, bl = 0, br = 0 } = typeof r === 'number'
+    ? { tl: r, tr: r, bl: r, br: r }
+    : r;
   ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + width - radius, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-  ctx.lineTo(x + width, y + height);
-  ctx.lineTo(x, y + height);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.moveTo(x + tl, y);
+  ctx.lineTo(x + w - tr, y);
+  ctx.quadraticCurveTo(x + w, y,         x + w, y + tr);
+  ctx.lineTo(x + w, y + h - br);
+  ctx.quadraticCurveTo(x + w, y + h,     x + w - br, y + h);
+  ctx.lineTo(x + bl, y + h);
+  ctx.quadraticCurveTo(x,     y + h,     x, y + h - bl);
+  ctx.lineTo(x, y + tl);
+  ctx.quadraticCurveTo(x,     y,         x + tl, y);
   ctx.closePath();
 }
 
@@ -470,6 +624,22 @@ function renderSaved() {
 /* ───────────────────────────────────────────
    CONTROLES — Tamaño y formato
 ─────────────────────────────────────────── */
+
+// Botones segmentados (armonía)
+document.querySelectorAll('[data-harmony]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.harmony = btn.dataset.harmony;
+    document.querySelectorAll('[data-harmony]').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-pressed', 'false');
+    });
+    btn.classList.add('active');
+    btn.setAttribute('aria-pressed', 'true');
+    generateColors();
+    renderGrid();
+    showToast(`🎨 Armonía: ${btn.textContent.trim()}`);
+  });
+});
 
 // Botones segmentados (tamaño)
 document.querySelectorAll('[data-size]').forEach(btn => {
