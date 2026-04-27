@@ -33,7 +33,7 @@
     <section class="controls" aria-label="Controles de generación">
 
       <div class="control-group">
-        <label class="control-label" for="palette-size">Tamaño</label>
+        <span class="control-label">Tamaño</span>
         <div class="segmented" role="group" aria-label="Número de colores">
           <button class="seg-btn active" data-size="6" aria-pressed="true">6</button>
           <button class="seg-btn" data-size="8" aria-pressed="false">8</button>
@@ -42,7 +42,7 @@
       </div>
 
       <div class="control-group">
-        <label class="control-label">Formato</label>
+        <span class="control-label">Formato</span>
         <div class="segmented" role="group" aria-label="Formato de color">
           <button class="seg-btn active" data-format="hex" aria-pressed="true">HEX</button>
           <button class="seg-btn" data-format="hsl" aria-pressed="false">HSL</button>
@@ -69,13 +69,13 @@
 
     <!-- SAVED PALETTES -->
     <section class="saved-section" aria-label="Paletas guardadas" id="saved-section">
-      <div class="saved-header">
+      <header class="saved-header">
         <h2 class="saved-title">Paletas guardadas</h2>
         <button class="btn-clear-all" id="btn-clear-all" aria-label="Eliminar todas las paletas guardadas">Limpiar todo</button>
-      </div>
-      <div class="saved-list" id="saved-list">
+      </header>
+      <ul class="saved-list" id="saved-list" aria-label="Lista de paletas guardadas">
         <!-- saved palettes rendered by JS -->
-      </div>
+      </ul>
       <p class="empty-state" id="empty-state">Aún no hay paletas guardadas.</p>
     </section>
 

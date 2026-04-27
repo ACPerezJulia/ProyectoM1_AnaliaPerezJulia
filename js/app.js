@@ -306,7 +306,7 @@ function renderSaved() {
   emptyState.classList.add('hidden');
 
   state.saved.forEach(palette => {
-    const row = document.createElement('div');
+    const row = document.createElement('li');
     row.className = 'saved-palette';
     row.setAttribute('role', 'article');
     row.setAttribute('aria-label', `Paleta guardada con ${palette.colors.length} colores`);
