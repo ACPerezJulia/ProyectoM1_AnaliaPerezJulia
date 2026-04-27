@@ -2,7 +2,7 @@
 
 Herramienta web para generar paletas de colores de forma rápida e intuitiva. Desarrollada para **Colorfly Studio**.
 
-![Captura de la aplicación](assets/CapturaPage.png)
+![Captura de la aplicación](assets/CapturaPage.PNG)
 
 ## Instalación
 
