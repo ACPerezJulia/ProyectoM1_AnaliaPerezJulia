@@ -324,11 +324,10 @@ function renderGrid() {
     }
 
     card.addEventListener('dragover', e => {
-      // Necesario para que el drop sea válido
+      if (color.locked) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      // Solo resalta si no es la misma card y el destino no está bloqueado
-      if (!color.locked) card.classList.add('drag-over');
+      card.classList.add('drag-over');
     });
 
     card.addEventListener('dragleave', () => {
@@ -448,7 +447,9 @@ function exportPalettePNG() {
   const link    = document.createElement('a');
   link.href     = canvas.toDataURL('image/png');
   link.download = `paleta-${Date.now()}.png`;
+  document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
 
   showToast('🖼 PNG exportado');
 }
@@ -557,10 +558,12 @@ function renderSaved() {
 
   if (state.saved.length === 0) {
     emptyState.classList.remove('hidden');
+    btnClearAll.classList.add('hidden');
     return;
   }
 
   emptyState.classList.add('hidden');
+  btnClearAll.classList.remove('hidden');
 
   state.saved.forEach(palette => {
     const row = document.createElement('li');
