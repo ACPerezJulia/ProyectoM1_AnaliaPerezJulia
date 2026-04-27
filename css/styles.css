@@ -177,13 +177,23 @@ body {
 }
 
 /* =============================================
-   CONTROLS
+   CONTROLS BAR (sticky)
    ============================================= */
+.controls-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 2rem;
+}
+
 .controls {
+  max-width: 1100px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  margin-bottom: 2.5rem;
   flex-wrap: wrap;
 }
 
@@ -772,11 +782,11 @@ kbd.footer-key {
 .main-content { padding: 1.2rem 0.9rem 6rem; }
 
 /* Controls mobile: columna */
+.controls-bar { padding: 0.75rem 1rem; }
 .controls {
   flex-direction: column;
   align-items: flex-start;
   gap: 0.9rem;
-  margin-bottom: 1.5rem;
 }
 
 /* Espacio extra en footer para que el FAB no lo tape */
@@ -835,11 +845,11 @@ kbd.footer-key {
   .main-content { padding: 2rem 2rem 4rem; }
 
   /* Controls en fila */
+  .controls-bar { padding: 0.75rem 2rem; }
   .controls {
     flex-direction: row;
     align-items: center;
     gap: 1.5rem;
-    margin-bottom: 2.5rem;
   }
 
   .site-footer { padding-bottom: 2.5rem; }
@@ -860,7 +870,7 @@ kbd.footer-key {
 
   /* Grid desktop */
   .palette-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
     gap: 1rem;
   }
 
@@ -883,7 +893,7 @@ kbd.footer-key {
    ============================================= */
 @media (min-width: 901px) {
   .palette-grid {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
   }
 }
 
