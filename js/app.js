@@ -261,9 +261,9 @@ function renderGrid() {
 
     /* ─── EVENTOS DE LA CARD ─── */
 
-    // Copiar según el formato activo (HEX o HSL)
+    // Siempre copia en HEX — los diseñadores del cliente trabajan solo en ese formato
     const copyAction = () => {
-      const codeToCopy = formatColor(color);
+      const codeToCopy = hslToHex(color.h, color.s, color.l);
       copyToClipboard(codeToCopy);
       // Flash visual
       card.classList.add('copied');
