@@ -26,7 +26,7 @@ Se vería así:
 
 ### Uso
 
-Al abrir la app se genera una paleta automáticamente. Podés usar el botón **Generar paleta** o presionar <kbd>Espacio</kbd> / <kbd>G</kbd> para generar una nueva.
+Al abrir la app se genera una paleta automáticamente. Podés usar el botón **Generar paleta** o presionar <kbd>Espacio</kbd> para generar una nueva.
 
 ### Funcionalidades
 

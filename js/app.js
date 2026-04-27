@@ -17,6 +17,33 @@ const state = {
   saved:  []           // paletas guardadas [{ id, colors[], date }]
 };
 
+const INTERACTIVE_SELECTOR = 'button, input, select, textarea, a, [contenteditable="true"]';
+
+const UI_TEXT = {
+  cardCopyHint: 'COPIAR',
+  lockedBadge: '🔒 bloqueado',
+  lockOn: '🔒 <span class="lock-label">on</span>',
+  lockOff: '🔓 <span class="lock-label">off</span>',
+  lockColor: 'Bloquear color',
+  unlockColor: 'Desbloquear color',
+  savePalette: '💾 Guardar paleta',
+  savePaletteAria: 'Guardar paleta actual',
+  exportPng: '🖼 Exportar PNG',
+  exportPngAria: 'Exportar paleta como imagen PNG',
+  exportNameAria: 'Nombre de la paleta para exportar',
+  paletteNamePlaceholder: 'Nombre de la paleta...',
+  cardAriaLabel: (code, isLocked) => `Color ${code}${isLocked ? ', bloqueado' : ''}. Clic para copiar.`,
+  copiedToast: code => `Copiado: ${code}`,
+  lockToast: isLocked => isLocked ? '🔒 Color bloqueado' : '🔓 Color desbloqueado',
+  unlockAllToast: '🔓 Todos los colores desbloqueados',
+  reorderedToast: '↕ Colores reordenados',
+  exportToast: '🖼 PNG exportado'
+};
+
+const KEYBOARD_SHORTCUTS = {
+  generatePaletteKey: ' '
+};
+
 /* ───────────────────────────────────────────
    REFERENCIAS AL DOM
 ─────────────────────────────────────────── */
@@ -196,204 +223,223 @@ function buildTriadic(count, anchorH = null) {
    RENDER
 ─────────────────────────────────────────── */
 
+function updateUnlockAllVisibility() {
+  const hasLocked = state.colors.some(c => c.locked);
+  btnUnlockAll.classList.toggle('hidden', !hasLocked);
+}
+
+function updateCardAriaLabel(card, color) {
+  const code = formatColor(color);
+  card.setAttribute('aria-label', UI_TEXT.cardAriaLabel(code, color.locked));
+}
+
+function updateLockButton(lockBtn, isLocked) {
+  lockBtn.innerHTML = isLocked ? UI_TEXT.lockOn : UI_TEXT.lockOff;
+  lockBtn.setAttribute('aria-pressed', String(isLocked));
+  lockBtn.setAttribute('aria-label', isLocked ? UI_TEXT.unlockColor : UI_TEXT.lockColor);
+}
+
+function isInteractiveTarget(el) {
+  return el && el.closest(INTERACTIVE_SELECTOR);
+}
+
+function buildCardSwatch(color, textColor) {
+  const swatch = document.createElement('div');
+  swatch.className = 'card-swatch';
+  // Nota: swatch.style.background es inline intencional — el color es dinámico (valor único por color generado)
+  swatch.style.background = toHSLString(color);
+  // cursor:pointer se define en CSS (.card-swatch), no hace falta inline
+
+  const hint = document.createElement('div');
+  hint.className = 'copy-hint';
+  hint.setAttribute('aria-hidden', 'true');
+  hint.textContent = UI_TEXT.cardCopyHint;
+  hint.style.color = textColor;
+  swatch.appendChild(hint);
+
+  const lockBadge = document.createElement('div');
+  lockBadge.className = 'lock-badge';
+  lockBadge.setAttribute('aria-hidden', 'true');
+  lockBadge.textContent = UI_TEXT.lockedBadge;
+  swatch.appendChild(lockBadge);
+
+  return swatch;
+}
+
+function buildCardInfo(code, isLocked) {
+  const info = document.createElement('div');
+  info.className = 'card-info';
+
+  const codeEl = document.createElement('span');
+  codeEl.className = 'card-code';
+  codeEl.textContent = code;
+
+  const lockBtn = document.createElement('button');
+  lockBtn.className = 'btn-lock';
+  updateLockButton(lockBtn, isLocked);
+
+  info.appendChild(codeEl);
+  info.appendChild(lockBtn);
+
+  return { info, lockBtn };
+}
+
+function attachCardDragAndDrop(card, index) {
+  card.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', String(index));
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => card.classList.add('dragging'), 0);
+  });
+
+  card.addEventListener('dragend', () => {
+    card.classList.remove('dragging');
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+  });
+
+  card.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    card.classList.add('drag-over');
+  });
+
+  card.addEventListener('dragleave', () => {
+    card.classList.remove('drag-over');
+  });
+
+  card.addEventListener('drop', e => {
+    e.preventDefault();
+    card.classList.remove('drag-over');
+
+    const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+    const toIndex   = index;
+
+    if (fromIndex === toIndex) return;
+
+    // Intercambiar en state.colors
+    const temp              = state.colors[fromIndex];
+    state.colors[fromIndex] = state.colors[toIndex];
+    state.colors[toIndex]   = temp;
+
+    renderGrid();
+    showToast(UI_TEXT.reorderedToast);
+  });
+}
+
+function createColorCard(color, index) {
+  const textColor = textOnColor(color.l);
+  const code = formatColor(color);
+
+  const card = document.createElement('div');
+  card.className = 'color-card' + (color.locked ? ' locked' : '');
+  card.setAttribute('role', 'listitem');
+  card.setAttribute('tabindex', '0');
+  updateCardAriaLabel(card, color);
+
+  // Drag & drop — todas las tarjetas son arrastrables (el bloqueo protege de regeneración, no de reordenamiento)
+  card.setAttribute('draggable', 'true');
+  card.classList.add('draggable');
+
+  const swatch = buildCardSwatch(color, textColor);
+  const { info, lockBtn } = buildCardInfo(code, color.locked);
+
+  card.appendChild(swatch);
+  card.appendChild(info);
+
+  // Siempre copia en HEX — los diseñadores del cliente trabajan solo en ese formato
+  const copyAction = () => {
+    const currentColor = state.colors[index];
+    const codeToCopy = hslToHex(currentColor.h, currentColor.s, currentColor.l);
+    copyToClipboard(codeToCopy);
+    // Flash visual
+    card.classList.add('copied');
+    card.addEventListener('animationend', () => card.classList.remove('copied'), { once: true });
+    showToast(UI_TEXT.copiedToast(codeToCopy));
+  };
+
+  swatch.addEventListener('click', copyAction);
+
+  card.addEventListener('keydown', e => {
+    if (isInteractiveTarget(e.target)) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      copyAction();
+    }
+  });
+
+  // Bloquear / desbloquear — muta el DOM sin re-render para evitar el salto visual
+  lockBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const isNowLocked = !state.colors[index].locked;
+    state.colors[index].locked = isNowLocked;
+
+    // Actualizar clases de la card
+    card.classList.toggle('locked', isNowLocked);
+
+    // Actualizar botón y accesibilidad
+    updateLockButton(lockBtn, isNowLocked);
+    updateCardAriaLabel(card, state.colors[index]);
+    updateUnlockAllVisibility();
+
+    showToast(UI_TEXT.lockToast(isNowLocked));
+  });
+
+  attachCardDragAndDrop(card, index);
+  return card;
+}
+
+function ensurePaletteActionBar() {
+  // Botones de acción (solo si no existen ya)
+  if (document.getElementById('btn-save-palette')) return;
+
+  const actionBar = document.createElement('div');
+  actionBar.id = 'palette-action-bar';
+  actionBar.className = 'palette-action-bar';
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.id = 'export-name-input';
+  nameInput.className = 'export-name-input';
+  nameInput.placeholder = UI_TEXT.paletteNamePlaceholder;
+  nameInput.maxLength = 32;
+  nameInput.setAttribute('aria-label', UI_TEXT.exportNameAria);
+
+  const btnSave = document.createElement('button');
+  btnSave.id = 'btn-save-palette';
+  btnSave.className = 'btn-save-palette';
+  btnSave.setAttribute('aria-label', UI_TEXT.savePaletteAria);
+  btnSave.innerHTML = UI_TEXT.savePalette;
+  btnSave.addEventListener('click', savePalette);
+
+  const btnExport = document.createElement('button');
+  btnExport.id = 'btn-export-palette';
+  btnExport.className = 'btn-export-palette';
+  btnExport.setAttribute('aria-label', UI_TEXT.exportPngAria);
+  btnExport.innerHTML = UI_TEXT.exportPng;
+  btnExport.addEventListener('click', exportPalettePNG);
+
+  actionBar.appendChild(nameInput);
+  actionBar.appendChild(btnSave);
+  actionBar.appendChild(btnExport);
+  grid.insertAdjacentElement('afterend', actionBar);
+}
+
 function renderGrid() {
   grid.innerHTML = '';
 
-  // Mostrar/ocultar "Desbloquear todo" según si hay algún color bloqueado
-  const hasLocked = state.colors.some(c => c.locked);
-  btnUnlockAll.classList.toggle('hidden', !hasLocked);
-
-  state.colors.forEach((color, index) => {
-    const bg  = toHSLString(color);
-    const txt = textOnColor(color.l);
-    const code = formatColor(color);
-
-    // Card
-    const card = document.createElement('div');
-    card.className = 'color-card' + (color.locked ? ' locked' : '');
-    card.setAttribute('role', 'listitem');
-    card.setAttribute('tabindex', '0');
-    card.setAttribute('aria-label', `Color ${code}${color.locked ? ', bloqueado' : ''}. Clic para copiar.`);
-
-    // Drag & drop — todas las tarjetas son arrastrables (el bloqueo protege de regeneración, no de reordenamiento)
-    card.setAttribute('draggable', 'true');
-    card.classList.add('draggable');
-
-    // Swatch
-    const swatch = document.createElement('div');
-    swatch.className = 'card-swatch';
-    // Nota: swatch.style.background es inline intencional — el color es dinámico (valor único por color generado)
-    swatch.style.background = bg;
-    // cursor:pointer se define en CSS (.card-swatch), no hace falta inline
-
-    // Hint de copia
-    const hint = document.createElement('div');
-    hint.className = 'copy-hint';
-    hint.setAttribute('aria-hidden', 'true');
-    hint.textContent = 'COPIAR';
-    hint.style.color = txt;
-    swatch.appendChild(hint);
-
-    // Badge de bloqueo (visible cuando está locked)
-    const lockBadge = document.createElement('div');
-    lockBadge.className = 'lock-badge';
-    lockBadge.setAttribute('aria-hidden', 'true');
-    lockBadge.textContent = '🔒 bloqueado';
-    swatch.appendChild(lockBadge);
-
-    // Info bar
-    const info = document.createElement('div');
-    info.className = 'card-info';
-
-    const codeEl = document.createElement('span');
-    codeEl.className = 'card-code';
-    codeEl.textContent = code;
-
-    const lockBtn = document.createElement('button');
-    lockBtn.className = 'btn-lock';
-    lockBtn.setAttribute('aria-label', color.locked ? 'Desbloquear color' : 'Bloquear color');
-    lockBtn.setAttribute('aria-pressed', String(color.locked));
-    lockBtn.innerHTML = color.locked
-      ? `🔒 <span class="lock-label">on</span>`
-      : `🔓 <span class="lock-label">off</span>`;
-
-    info.appendChild(codeEl);
-    info.appendChild(lockBtn);
-
-    card.appendChild(swatch);
-    card.appendChild(info);
-    grid.appendChild(card);
-
-    /* ─── EVENTOS DE LA CARD ─── */
-
-    // Siempre copia en HEX — los diseñadores del cliente trabajan solo en ese formato
-    const copyAction = () => {
-      const codeToCopy = hslToHex(color.h, color.s, color.l);
-      copyToClipboard(codeToCopy);
-      // Flash visual
-      card.classList.add('copied');
-      card.addEventListener('animationend', () => card.classList.remove('copied'), { once: true });
-      showToast(`Copiado: ${codeToCopy}`);
-    };
-
-    swatch.addEventListener('click', copyAction);
-
-    card.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyAction(); }
-    });
-
-    // Bloquear / desbloquear — muta el DOM sin re-render para evitar el salto visual
-    lockBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      const isNowLocked = !state.colors[index].locked;
-      state.colors[index].locked = isNowLocked;
-
-      // Actualizar clases de la card
-      card.classList.toggle('locked', isNowLocked);
-
-      // Actualizar botón
-      lockBtn.innerHTML = isNowLocked
-        ? `🔒 <span class="lock-label">on</span>`
-        : `🔓 <span class="lock-label">off</span>`;
-      lockBtn.setAttribute('aria-pressed', String(isNowLocked));
-      lockBtn.setAttribute('aria-label', isNowLocked ? 'Desbloquear color' : 'Bloquear color');
-
-      // Actualizar aria-label de la card
-      const currentCode = formatColor(state.colors[index]);
-      card.setAttribute('aria-label', `Color ${currentCode}${isNowLocked ? ', bloqueado' : ''}. Clic para copiar.`);
-
-      // Mostrar/ocultar botón "Desbloquear todo"
-      const hasLocked = state.colors.some(c => c.locked);
-      btnUnlockAll.classList.toggle('hidden', !hasLocked);
-
-      showToast(isNowLocked ? '🔒 Color bloqueado' : '🔓 Color desbloqueado');
-    });
-
-    /* ─── DRAG & DROP ─── */
-    card.addEventListener('dragstart', e => {
-      e.dataTransfer.setData('text/plain', String(index));
-      e.dataTransfer.effectAllowed = 'move';
-      setTimeout(() => card.classList.add('dragging'), 0);
-    });
-
-    card.addEventListener('dragend', () => {
-      card.classList.remove('dragging');
-      document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-    });
-
-    card.addEventListener('dragover', e => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      card.classList.add('drag-over');
-    });
-
-    card.addEventListener('dragleave', () => {
-      card.classList.remove('drag-over');
-    });
-
-    card.addEventListener('drop', e => {
-      e.preventDefault();
-      card.classList.remove('drag-over');
-
-      const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-      const toIndex   = index;
-
-      if (fromIndex === toIndex) return;
-
-      // Intercambiar en state.colors
-      const temp              = state.colors[fromIndex];
-      state.colors[fromIndex] = state.colors[toIndex];
-      state.colors[toIndex]   = temp;
-
-      renderGrid();
-      showToast('↕ Colores reordenados');
-    });
-  });
-
-  // Botones de acción (solo si no existen ya)
-  if (!document.getElementById('btn-save-palette')) {
-    const actionBar = document.createElement('div');
-    actionBar.id = 'palette-action-bar';
-    actionBar.className = 'palette-action-bar';
-
-    const nameInput = document.createElement('input');
-    nameInput.type = 'text';
-    nameInput.id = 'export-name-input';
-    nameInput.className = 'export-name-input';
-    nameInput.placeholder = 'Nombre de la paleta...';
-    nameInput.maxLength = 32;
-    nameInput.setAttribute('aria-label', 'Nombre de la paleta para exportar');
-
-    const btnSave = document.createElement('button');
-    btnSave.id = 'btn-save-palette';
-    btnSave.className = 'btn-save-palette';
-    btnSave.setAttribute('aria-label', 'Guardar paleta actual');
-    btnSave.innerHTML = '💾 Guardar paleta';
-    btnSave.addEventListener('click', savePalette);
-
-    const btnExport = document.createElement('button');
-    btnExport.id = 'btn-export-palette';
-    btnExport.className = 'btn-export-palette';
-    btnExport.setAttribute('aria-label', 'Exportar paleta como imagen PNG');
-    btnExport.innerHTML = '🖼 Exportar PNG';
-    btnExport.addEventListener('click', exportPalettePNG);
-
-    actionBar.appendChild(nameInput);
-    actionBar.appendChild(btnSave);
-    actionBar.appendChild(btnExport);
-    grid.insertAdjacentElement('afterend', actionBar);
-  }
+  updateUnlockAllVisibility();
+  state.colors.forEach((color, index) => grid.appendChild(createColorCard(color, index)));
+  ensurePaletteActionBar();
 }
 
 /* ───────────────────────────────────────────
    EXPORTAR PALETA COMO PNG — Canvas API
 ─────────────────────────────────────────── */
 
-function exportPalettePNG() {
-  const colors = state.colors;
-  const count  = colors.length;
-  const name   = (document.getElementById('export-name-input')?.value || '').trim();
+function getExportName() {
+  return (document.getElementById('export-name-input')?.value || '').trim();
+}
 
+function getExportMetrics(count, name) {
   // Dimensiones lógicas (lo que "parece" en pantalla)
   const STRIP_W  = 160;   // ancho de cada tira de color
   const SWATCH_H = 280;   // altura del bloque de color
@@ -406,50 +452,66 @@ function exportPalettePNG() {
   const canvasW = MARGIN * 2 + count * STRIP_W + (count - 1) * PADDING;
   const canvasH = MARGIN * 2 + NAME_H + SWATCH_H + LABEL_H + BRAND_H;
 
+  return {
+    STRIP_W,
+    SWATCH_H,
+    LABEL_H,
+    PADDING,
+    MARGIN,
+    NAME_H,
+    BRAND_H,
+    canvasW,
+    canvasH
+  };
+}
+
+function createExportCanvas(metrics) {
   // Factor de escala para pantallas HiDPI/Retina — texto nítido
   const DPR = window.devicePixelRatio || 1;
-
   const canvas  = document.createElement('canvas');
-  canvas.width  = canvasW * DPR;
-  canvas.height = canvasH * DPR;
+  canvas.width  = metrics.canvasW * DPR;
+  canvas.height = metrics.canvasH * DPR;
 
   const ctx = canvas.getContext('2d');
-
   // Escalar el contexto para que todo dibuje al doble de resolución
   ctx.scale(DPR, DPR);
 
-  // Fondo según tema activo
-  const isLight = document.body.classList.contains('light');
+  return { canvas, ctx };
+}
+
+function drawExportBackground(ctx, metrics, isLight) {
   ctx.fillStyle = isLight ? '#f5f4f0' : '#17171b';
-  ctx.fillRect(0, 0, canvasW, canvasH);
+  ctx.fillRect(0, 0, metrics.canvasW, metrics.canvasH);
+}
 
-  // Nombre de la paleta (si existe)
-  if (name) {
-    ctx.fillStyle    = isLight ? '#1a1a1e' : '#e8e8f0';
-    ctx.font         = '400 italic 17px "Playfair Display", Georgia, serif';
-    ctx.textAlign    = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(name, MARGIN, MARGIN + NAME_H / 2);
-  }
+function drawExportName(ctx, name, metrics, isLight) {
+  if (!name) return;
+  ctx.fillStyle    = isLight ? '#1a1a1e' : '#e8e8f0';
+  ctx.font         = '400 italic 17px "Playfair Display", Georgia, serif';
+  ctx.textAlign    = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(name, metrics.MARGIN, metrics.MARGIN + metrics.NAME_H / 2);
+}
 
+function drawExportSwatches(ctx, colors, metrics, isLight) {
   colors.forEach((color, index) => {
-    const x = MARGIN + index * (STRIP_W + PADDING);
-    const y = MARGIN + NAME_H;
+    const x = metrics.MARGIN + index * (metrics.STRIP_W + metrics.PADDING);
+    const y = metrics.MARGIN + metrics.NAME_H;
 
     // Swatch con esquinas redondeadas solo arriba
     const hsl = `hsl(${color.h}, ${color.s}%, ${color.l}%)`;
     ctx.fillStyle = hsl;
-    roundRect(ctx, x, y, STRIP_W, SWATCH_H, { tl: 14, tr: 14, bl: 0, br: 0 });
+    roundRect(ctx, x, y, metrics.STRIP_W, metrics.SWATCH_H, { tl: 14, tr: 14, bl: 0, br: 0 });
     ctx.fill();
 
     // Fondo de la etiqueta — mismo color que el fondo pero ligeramente diferente
     ctx.fillStyle = isLight ? '#ffffff' : '#0e0e10';
-    roundRect(ctx, x, y + SWATCH_H, STRIP_W, LABEL_H, { tl: 0, tr: 0, bl: 14, br: 14 });
+    roundRect(ctx, x, y + metrics.SWATCH_H, metrics.STRIP_W, metrics.LABEL_H, { tl: 0, tr: 0, bl: 14, br: 14 });
     ctx.fill();
 
     // Separador sutil entre swatch y etiqueta
     ctx.fillStyle = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)';
-    ctx.fillRect(x, y + SWATCH_H, STRIP_W, 1);
+    ctx.fillRect(x, y + metrics.SWATCH_H, metrics.STRIP_W, 1);
 
     // Código del color
     const code = formatColor(color);
@@ -457,17 +519,23 @@ function exportPalettePNG() {
     ctx.font       = '500 13px "DM Mono", "Courier New", monospace';
     ctx.textAlign  = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(code, x + STRIP_W / 2, y + SWATCH_H + LABEL_H / 2);
+    ctx.fillText(code, x + metrics.STRIP_W / 2, y + metrics.SWATCH_H + metrics.LABEL_H / 2);
   });
+}
 
-  // Branding inferior
+function drawExportBranding(ctx, metrics, isLight) {
   ctx.fillStyle    = isLight ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)';
   ctx.font         = '400 11px "DM Mono", "Courier New", monospace';
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('Paleta generada por Colorfly Studio', canvasW / 2, MARGIN + NAME_H + SWATCH_H + LABEL_H + BRAND_H / 2);
+  ctx.fillText(
+    'Paleta generada por Colorfly Studio',
+    metrics.canvasW / 2,
+    metrics.MARGIN + metrics.NAME_H + metrics.SWATCH_H + metrics.LABEL_H + metrics.BRAND_H / 2
+  );
+}
 
-  // Descargar como PNG
+function downloadExportCanvas(canvas, name) {
   const link    = document.createElement('a');
   link.href     = canvas.toDataURL('image/png');
   const slug    = name ? `-${name.toLowerCase().replace(/\s+/g, '-')}` : '';
@@ -475,8 +543,23 @@ function exportPalettePNG() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
 
-  showToast('🖼 PNG exportado');
+function exportPalettePNG() {
+  const colors = state.colors;
+  const name = getExportName();
+  const metrics = getExportMetrics(colors.length, name);
+  const { canvas, ctx } = createExportCanvas(metrics);
+
+  const isLight = document.body.classList.contains('light');
+  drawExportBackground(ctx, metrics, isLight);
+  drawExportName(ctx, name, metrics, isLight);
+  drawExportSwatches(ctx, colors, metrics, isLight);
+  drawExportBranding(ctx, metrics, isLight);
+
+  downloadExportCanvas(canvas, name);
+
+  showToast(UI_TEXT.exportToast);
 }
 
 /** Rectángulo con radio independiente por esquina */
@@ -654,63 +737,66 @@ function renderSaved() {
    CONTROLES — Tamaño y formato
 ─────────────────────────────────────────── */
 
-// Desplegable de armonía
-document.getElementById('select-harmony').addEventListener('change', function () {
-  state.harmony = this.value;
+function handleHarmonyChange(e) {
+  const select = e.currentTarget;
+  state.harmony = select.value;
   generateColors();
   renderGrid();
-  showToast(`🎨 Armonía: ${this.options[this.selectedIndex].text}`);
-});
+  showToast(`🎨 Armonía: ${select.options[select.selectedIndex].text}`);
+}
 
-// Botones segmentados (tamaño)
-document.querySelectorAll('[data-size]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    state.size = parseInt(btn.dataset.size);
-    // UI active state
-    document.querySelectorAll('[data-size]').forEach(b => {
-      b.classList.remove('active');
-      b.setAttribute('aria-pressed', 'false');
-    });
-    btn.classList.add('active');
-    btn.setAttribute('aria-pressed', 'true');
-    // Rellena o recorta colors sin regenerar los bloqueados
-    while (state.colors.length < state.size) state.colors.push(randomColor());
-    state.colors = state.colors.slice(0, state.size);
-    renderGrid();
+function handleSizeClick(e) {
+  const btn = e.currentTarget;
+  state.size = parseInt(btn.dataset.size, 10);
+
+  // UI active state
+  document.querySelectorAll('[data-size]').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-pressed', 'false');
   });
-});
+  btn.classList.add('active');
+  btn.setAttribute('aria-pressed', 'true');
 
-// Botones segmentados (formato)
-document.querySelectorAll('[data-format]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    state.format = btn.dataset.format;
-    document.querySelectorAll('[data-format]').forEach(b => {
-      b.classList.remove('active');
-      b.setAttribute('aria-pressed', 'false');
-    });
-    btn.classList.add('active');
-    btn.setAttribute('aria-pressed', 'true');
-    renderGrid(); // rerender para actualizar código mostrado
+  // Rellena o recorta colors sin regenerar los bloqueados
+  while (state.colors.length < state.size) state.colors.push(randomColor());
+  state.colors = state.colors.slice(0, state.size);
+  renderGrid();
+}
+
+function handleFormatClick(e) {
+  const btn = e.currentTarget;
+  state.format = btn.dataset.format;
+
+  document.querySelectorAll('[data-format]').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-pressed', 'false');
   });
-});
+  btn.classList.add('active');
+  btn.setAttribute('aria-pressed', 'true');
 
-/* ───────────────────────────────────────────
-   BOTÓN GENERAR
-─────────────────────────────────────────── */
-btnGenerate.addEventListener('click', () => {
+  renderGrid(); // rerender para actualizar código mostrado
+}
+
+function handleGenerateClick() {
   generateColors();
   renderGrid();
   showToast('🎨 ¡Paleta generada!');
-});
+}
 
-/* ───────────────────────────────────────────
-   BOTÓN DESBLOQUEAR TODO
-─────────────────────────────────────────── */
-btnUnlockAll.addEventListener('click', () => {
+function handleUnlockAllClick() {
   state.colors.forEach(c => c.locked = false);
   renderGrid();
-  showToast('🔓 Todos los colores desbloqueados');
-});
+  showToast(UI_TEXT.unlockAllToast);
+}
+
+function handleGlobalShortcut(e) {
+  const active = document.activeElement;
+  if (isInteractiveTarget(active)) return;
+  if (e.key === KEYBOARD_SHORTCUTS.generatePaletteKey) {
+    e.preventDefault();
+    btnGenerate.click();
+  }
+}
 
 /* ───────────────────────────────────────────
    CARGAR PALETA GUARDADA
@@ -738,24 +824,6 @@ function loadPalette(palette) {
 }
 
 /* ───────────────────────────────────────────
-   BOTÓN LIMPIAR TODO
-─────────────────────────────────────────── */
-btnClearAll.addEventListener('click', clearAllSaved);
-
-/* ───────────────────────────────────────────
-   SHORTCUT TECLADO: barra espaciadora o "G"
-   (cuando el foco no está en un botón/input)
-─────────────────────────────────────────── */
-document.addEventListener('keydown', e => {
-  const tag = document.activeElement.tagName;
-  if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'TEXTAREA') return;
-  if (e.key === ' ' || e.key === 'g' || e.key === 'G') {
-    e.preventDefault();
-    btnGenerate.click();
-  }
-});
-
-/* ───────────────────────────────────────────
    TEMA CLARO / OSCURO
 ─────────────────────────────────────────── */
 const btnTheme  = document.getElementById('btn-theme');
@@ -768,16 +836,39 @@ function applyTheme(light) {
   btnTheme.setAttribute('aria-label', light ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro');
 }
 
-btnTheme.addEventListener('click', () => {
+function handleThemeToggle() {
   const isLight = !document.body.classList.contains('light');
   localStorage.setItem(LS_THEME, isLight ? 'light' : 'dark');
   applyTheme(isLight);
-});
+}
+
+/* ───────────────────────────────────────────
+   EVENTOS
+─────────────────────────────────────────── */
+function bindEvents() {
+  document.getElementById('select-harmony').addEventListener('change', handleHarmonyChange);
+
+  document.querySelectorAll('[data-size]').forEach(btn => {
+    btn.addEventListener('click', handleSizeClick);
+  });
+
+  document.querySelectorAll('[data-format]').forEach(btn => {
+    btn.addEventListener('click', handleFormatClick);
+  });
+
+  btnGenerate.addEventListener('click', handleGenerateClick);
+  btnUnlockAll.addEventListener('click', handleUnlockAllClick);
+  btnClearAll.addEventListener('click', clearAllSaved);
+  document.addEventListener('keydown', handleGlobalShortcut);
+  btnTheme.addEventListener('click', handleThemeToggle);
+}
 
 /* ───────────────────────────────────────────
    INIT
 ─────────────────────────────────────────── */
 function init() {
+  bindEvents();
+
   // Restaurar tema guardado
   const savedTheme = localStorage.getItem(LS_THEME);
   if (savedTheme === 'light') applyTheme(true);
