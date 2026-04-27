@@ -91,7 +91,7 @@ function makeColor(h = Math.floor(Math.random() * 360)) {
 
 /** Mantiene h dentro de 0–359 */
 function wrapHue(h) {
-  return ((h % 360) + 360) % 360;
+  return Math.round(((h % 360) + 360) % 360);
 }
 
 /**
