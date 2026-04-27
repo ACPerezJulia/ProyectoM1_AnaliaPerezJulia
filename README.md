@@ -33,13 +33,13 @@ Al abrir la app se genera una paleta automáticamente. Podés usar el botón **G
 | Funcionalidad | Descripción |
 |---|---|
 | Tamaño | Elegí entre 6, 8 o 9 colores |
-| Armonía | Aleatorio, Análogos, Complementarios o Triádicos |
+| Armonía | Seleccioná desde un desplegable: Aleatorio, Análogos, Complementarios o Triádicos |
 | Formato | Visualizá los códigos en HEX o HSL |
 | Copiar | Clic sobre el color para copiar su HEX |
 | Bloquear | 🔒 Fija colores para que no cambien al regenerar |
 | Reordenar | Drag & drop para cambiar el orden |
 | Guardar | 💾 Guarda paletas en el navegador con nombre editable |
-| Exportar | 🖼 Descargá la paleta como imagen PNG |
+| Exportar | 🖼 Descargá la paleta como PNG con nombre y marca de Colorfly Studio |
 | Tema | ☀️ / 🌙 Modo claro u oscuro, se recuerda entre sesiones |
 
 ---
