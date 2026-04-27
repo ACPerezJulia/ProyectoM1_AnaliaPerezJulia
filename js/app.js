@@ -356,6 +356,14 @@ function renderGrid() {
     actionBar.id = 'palette-action-bar';
     actionBar.className = 'palette-action-bar';
 
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.id = 'export-name-input';
+    nameInput.className = 'export-name-input';
+    nameInput.placeholder = 'Nombre de la paleta...';
+    nameInput.maxLength = 32;
+    nameInput.setAttribute('aria-label', 'Nombre de la paleta para exportar');
+
     const btnSave = document.createElement('button');
     btnSave.id = 'btn-save-palette';
     btnSave.className = 'btn-save-palette';
@@ -370,6 +378,7 @@ function renderGrid() {
     btnExport.innerHTML = '🖼 Exportar PNG';
     btnExport.addEventListener('click', exportPalettePNG);
 
+    actionBar.appendChild(nameInput);
     actionBar.appendChild(btnSave);
     actionBar.appendChild(btnExport);
     grid.insertAdjacentElement('afterend', actionBar);
@@ -383,6 +392,7 @@ function renderGrid() {
 function exportPalettePNG() {
   const colors = state.colors;
   const count  = colors.length;
+  const name   = (document.getElementById('export-name-input')?.value || '').trim();
 
   // Dimensiones lógicas (lo que "parece" en pantalla)
   const STRIP_W  = 160;   // ancho de cada tira de color
@@ -390,9 +400,11 @@ function exportPalettePNG() {
   const LABEL_H  = 52;    // altura del área de texto
   const PADDING  = 12;    // espacio entre tiras
   const MARGIN   = 24;    // margen exterior
+  const NAME_H   = name ? 40 : 0;   // altura para el nombre (si existe)
+  const BRAND_H  = 36;               // altura para el branding inferior
 
   const canvasW = MARGIN * 2 + count * STRIP_W + (count - 1) * PADDING;
-  const canvasH = MARGIN * 2 + SWATCH_H + LABEL_H;
+  const canvasH = MARGIN * 2 + NAME_H + SWATCH_H + LABEL_H + BRAND_H;
 
   // Factor de escala para pantallas HiDPI/Retina — texto nítido
   const DPR = window.devicePixelRatio || 1;
@@ -411,9 +423,18 @@ function exportPalettePNG() {
   ctx.fillStyle = isLight ? '#f5f4f0' : '#17171b';
   ctx.fillRect(0, 0, canvasW, canvasH);
 
+  // Nombre de la paleta (si existe)
+  if (name) {
+    ctx.fillStyle    = isLight ? '#1a1a1e' : '#e8e8f0';
+    ctx.font         = '400 italic 17px "Playfair Display", Georgia, serif';
+    ctx.textAlign    = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, MARGIN, MARGIN + NAME_H / 2);
+  }
+
   colors.forEach((color, index) => {
     const x = MARGIN + index * (STRIP_W + PADDING);
-    const y = MARGIN;
+    const y = MARGIN + NAME_H;
 
     // Swatch con esquinas redondeadas solo arriba
     const hsl = `hsl(${color.h}, ${color.s}%, ${color.l}%)`;
@@ -439,10 +460,18 @@ function exportPalettePNG() {
     ctx.fillText(code, x + STRIP_W / 2, y + SWATCH_H + LABEL_H / 2);
   });
 
+  // Branding inferior
+  ctx.fillStyle    = isLight ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)';
+  ctx.font         = '400 11px "DM Mono", "Courier New", monospace';
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Paleta generada por Colorfly Studio', canvasW / 2, MARGIN + NAME_H + SWATCH_H + LABEL_H + BRAND_H / 2);
+
   // Descargar como PNG
   const link    = document.createElement('a');
   link.href     = canvas.toDataURL('image/png');
-  link.download = `paleta-${Date.now()}.png`;
+  const slug    = name ? `-${name.toLowerCase().replace(/\s+/g, '-')}` : '';
+  link.download = `paleta${slug}-${Date.now()}.png`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -696,6 +725,9 @@ function loadPalette(palette) {
     b.classList.toggle('active', match);
     b.setAttribute('aria-pressed', String(match));
   });
+
+  const nameInput = document.getElementById('export-name-input');
+  if (nameInput) nameInput.value = palette.name || '';
 
   renderGrid();
   const name = palette.name ? `"${palette.name}"` : 'la paleta';

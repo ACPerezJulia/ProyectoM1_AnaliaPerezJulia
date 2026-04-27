@@ -487,6 +487,30 @@ body {
   color: var(--accent);
 }
 
+/* Input nombre para exportar */
+.export-name-input {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 0.5rem 1rem;
+  outline: none;
+  width: 180px;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.export-name-input:focus {
+  border-color: var(--accent);
+  background: rgba(200,245,100,0.05);
+}
+
+.export-name-input::placeholder {
+  color: var(--muted);
+  font-style: italic;
+}
+
 /* Botón exportar PNG */
 .btn-export-palette {
   display: flex;
