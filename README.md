@@ -51,8 +51,31 @@ Hacé clic en **🖼 Exportar PNG** para descargar la paleta como imagen.
 ### Tema claro / oscuro
 Usá el botón ☀️ / 🌙 en el encabezado para alternar entre temas. La preferencia se guarda automáticamente.
 
+## Despliegue
+
+La aplicación está disponible en línea via GitHub Pages:
+🔗 [https://acperezjulia.github.io/ProyectoM1_AnaliaPerezJulia/](https://acperezjulia.github.io/ProyectoM1_AnaliaPerezJulia/)
+
+## Decisiones técnicas
+
+- **Sin frameworks ni dependencias**: se optó por JavaScript vanilla para mantener el proyecto liviano, sin pasos de build y apto para abrirse directamente como archivo local.
+- **HSL internamente, HEX al copiar**: los colores se generan y manipulan en HSL porque facilita el cálculo de armonías cromáticas. Al copiar se convierte a HEX, ya que es el formato estándar que usan los diseñadores de Colorfly Studio.
+- **Mobile-first**: los estilos base están pensados para celular y se escalan progresivamente hacia pantallas más grandes con media queries.
+- **localStorage para persistencia**: las paletas guardadas y la preferencia de tema se almacenan en el navegador sin necesidad de backend.
+- **Funcionalidades extra**: se incorporaron mejoras de UI/UX más allá de los requisitos base — drag & drop para reordenar, exportación como PNG, modos de armonía cromática, barra de controles fija y modo claro/oscuro — con el objetivo de hacer la herramienta más útil y profesional para el uso real del cliente.
+
+## Posibles mejoras
+
+- Permitir ingresar un color propio como punto de partida de la paleta.
+- Agregar más modos de armonía (tetrádicos, monocromáticos).
+- Historial de paletas generadas (no solo las guardadas manualmente).
+- Opción de exportar la paleta como archivo CSS o JSON.
+- Vista previa de la paleta aplicada a una UI de ejemplo (botones, fondo, tipografía).
+
 ## Tecnologías
 
-- HTML5 semántico
-- CSS3 con variables y diseño mobile-first
+- HTML5 semántico con roles ARIA y etiquetas accesibles
+- CSS3: variables, Flexbox, CSS Grid, diseño mobile-first, animaciones y transiciones
 - JavaScript vanilla (sin frameworks ni dependencias)
+- Canvas API para la exportación de paletas como imagen PNG
+- localStorage para persistencia de datos en el navegador
