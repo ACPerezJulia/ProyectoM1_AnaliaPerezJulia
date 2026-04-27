@@ -99,9 +99,14 @@ function wrapHue(h) {
  * Los colores bloqueados se preservan.
  */
 function generateColors() {
-  const count     = state.size;
-  const harmony   = state.harmony;
-  const generated = buildHarmony(harmony, count);
+  const count   = state.size;
+  const harmony = state.harmony;
+
+  // Si hay colores bloqueados, su tono ancla la armonía (análogos, complementarios, triádicos)
+  const lockedColor = state.colors.find(c => c.locked);
+  const anchorH     = lockedColor ? lockedColor.h : null;
+
+  const generated = buildHarmony(harmony, count, anchorH);
 
   // Respeta los colores bloqueados
   state.colors = generated.map((color, i) =>
@@ -110,11 +115,11 @@ function generateColors() {
 }
 
 /** Construye el array de colores según el tipo de armonía */
-function buildHarmony(harmony, count) {
+function buildHarmony(harmony, count, anchorH = null) {
   if (harmony === 'random') return buildRandom(count);
-  if (harmony === 'analogous') return buildAnalogous(count);
-  if (harmony === 'complementary') return buildComplementary(count);
-  if (harmony === 'triadic') return buildTriadic(count);
+  if (harmony === 'analogous') return buildAnalogous(count, anchorH);
+  if (harmony === 'complementary') return buildComplementary(count, anchorH);
+  if (harmony === 'triadic') return buildTriadic(count, anchorH);
   return buildRandom(count);
 }
 
@@ -129,8 +134,8 @@ function buildRandom(count) {
  * en un arco de ±60° alrededor de él, con leve variación
  * de s y l para que no sean todos idénticos.
  */
-function buildAnalogous(count) {
-  const baseH  = Math.floor(Math.random() * 360);
+function buildAnalogous(count, anchorH = null) {
+  const baseH  = anchorH !== null ? anchorH : Math.floor(Math.random() * 360);
   const spread = 60;  // arco total en grados
   return Array.from({ length: count }, (_, i) => {
     const step = count > 1 ? (spread / (count - 1)) : 0;
@@ -149,8 +154,8 @@ function buildAnalogous(count) {
  * de luminosidad y saturación alrededor de cada polo.
  * Mitad de colores en torno al tono base, mitad en torno al opuesto.
  */
-function buildComplementary(count) {
-  const baseH  = Math.floor(Math.random() * 360);
+function buildComplementary(count, anchorH = null) {
+  const baseH  = anchorH !== null ? anchorH : Math.floor(Math.random() * 360);
   const compH  = wrapHue(baseH + 180);
   const half   = Math.ceil(count / 2);
   const colors = [];
@@ -172,8 +177,8 @@ function buildComplementary(count) {
  * TRIÁDICOS — tres tonos equidistantes (120° entre sí).
  * Los colores se distribuyen en grupos alrededor de cada vértice.
  */
-function buildTriadic(count) {
-  const baseH   = Math.floor(Math.random() * 360);
+function buildTriadic(count, anchorH = null) {
+  const baseH   = anchorH !== null ? anchorH : Math.floor(Math.random() * 360);
   const roots   = [baseH, wrapHue(baseH + 120), wrapHue(baseH + 240)];
   return Array.from({ length: count }, (_, i) => {
     const root   = roots[i % 3];
