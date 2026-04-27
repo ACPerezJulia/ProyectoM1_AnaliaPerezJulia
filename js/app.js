@@ -552,9 +552,10 @@ function persistSaved() {
 }
 
 function savePalette() {
+  const nameInput = document.getElementById('export-name-input');
   const entry = {
     id: Date.now(),
-    name: '',
+    name: nameInput ? nameInput.value.trim() : '',
     colors: state.colors.map(c => ({ h: c.h, s: c.s, l: c.l })),
     date: new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })
   };
