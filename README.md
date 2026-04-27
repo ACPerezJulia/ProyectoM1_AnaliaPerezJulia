@@ -28,6 +28,8 @@ Se vería así:
 
 Al abrir la app se genera una paleta automáticamente. Podés usar el botón **Generar paleta** o presionar <kbd>Espacio</kbd> para generar una nueva.
 
+> **Compatibilidad:** la experiencia objetivo de esta versión es **desktop**. En móvil la interfaz se adapta, pero el reordenamiento por drag & drop no está optimizado para celulares.
+
 ### Funcionalidades
 
 | Funcionalidad | Descripción |
@@ -37,7 +39,7 @@ Al abrir la app se genera una paleta automáticamente. Podés usar el botón **G
 | Formato | Visualizá los códigos en HEX o HSL |
 | Copiar | Clic sobre el color para copiar su HEX |
 | Bloquear | 🔒 Fija colores para que no cambien al regenerar |
-| Reordenar | Drag & drop para cambiar el orden |
+| Reordenar | Drag & drop para cambiar el orden _(funcionalidad en desktop)_ |
 | Guardar | 💾 Guarda paletas en el navegador con nombre editable |
 | Exportar | 🖼 Descargá la paleta como PNG con nombre y marca de Colorfly Studio |
 | Tema | ☀️ / 🌙 Modo claro u oscuro, se recuerda entre sesiones |
@@ -55,7 +57,7 @@ Disponible en línea via GitHub Pages:
 
 - **Sin frameworks ni dependencias**: JavaScript vanilla para mantener el proyecto liviano, sin pasos de build y apto para abrirse como archivo local.
 - **HSL internamente, HEX al copiar**: los colores se generan en HSL porque facilita el cálculo de armonías cromáticas. Al copiar se convierte a HEX, el formato estándar de los diseñadores de Colorfly Studio.
-- **Mobile-first**: los estilos base están pensados para celular y escalan progresivamente con media queries.
+- **Responsive con foco desktop**: la interfaz se adapta a distintos tamaños, pero la experiencia completa está orientada a escritorio (por ejemplo, drag & drop).
 - **localStorage**: las paletas guardadas y la preferencia de tema persisten en el navegador sin necesidad de backend.
 - **Funcionalidades extra**: se incorporaron mejoras de UI/UX más allá de los requisitos base — drag & drop, exportación PNG, modos de armonía, barra de controles fija y modo claro/oscuro — para hacer la herramienta más útil en el uso real del cliente.
 
