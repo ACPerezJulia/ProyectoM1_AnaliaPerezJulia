@@ -50,13 +50,13 @@
       </div>
 
       <div class="control-group">
-        <span class="control-label">Armonía</span>
-        <div class="segmented segmented--harmony" role="group" aria-label="Tipo de armonía de color">
-          <button class="seg-btn active" data-harmony="random"        aria-pressed="true">Aleatorio</button>
-          <button class="seg-btn"        data-harmony="analogous"     aria-pressed="false">Análogos</button>
-          <button class="seg-btn"        data-harmony="complementary" aria-pressed="false">Complementarios</button>
-          <button class="seg-btn"        data-harmony="triadic"       aria-pressed="false">Triádicos</button>
-        </div>
+        <label class="control-label" for="select-harmony">Armonía</label>
+        <select class="harmony-select" id="select-harmony" aria-label="Tipo de armonía de color">
+          <option value="random">Aleatorio</option>
+          <option value="analogous">Análogos</option>
+          <option value="complementary">Complementarios</option>
+          <option value="triadic">Triádicos</option>
+        </select>
       </div>
 
       <button class="btn-generate" id="btn-generate" aria-label="Generar nueva paleta de colores">

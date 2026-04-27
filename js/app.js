@@ -624,20 +624,12 @@ function renderSaved() {
    CONTROLES — Tamaño y formato
 ─────────────────────────────────────────── */
 
-// Botones segmentados (armonía)
-document.querySelectorAll('[data-harmony]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    state.harmony = btn.dataset.harmony;
-    document.querySelectorAll('[data-harmony]').forEach(b => {
-      b.classList.remove('active');
-      b.setAttribute('aria-pressed', 'false');
-    });
-    btn.classList.add('active');
-    btn.setAttribute('aria-pressed', 'true');
-    generateColors();
-    renderGrid();
-    showToast(`🎨 Armonía: ${btn.textContent.trim()}`);
-  });
+// Desplegable de armonía
+document.getElementById('select-harmony').addEventListener('change', function () {
+  state.harmony = this.value;
+  generateColors();
+  renderGrid();
+  showToast(`🎨 Armonía: ${this.options[this.selectedIndex].text}`);
 });
 
 // Botones segmentados (tamaño)
