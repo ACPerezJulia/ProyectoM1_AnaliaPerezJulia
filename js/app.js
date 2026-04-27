@@ -98,7 +98,7 @@ function renderGrid() {
 
   // Mostrar/ocultar "Desbloquear todo" según si hay algún color bloqueado
   const hasLocked = state.colors.some(c => c.locked);
-  btnUnlockAll.style.display = hasLocked ? '' : 'none';
+  btnUnlockAll.classList.toggle('hidden', !hasLocked);
 
   state.colors.forEach((color, index) => {
     const bg  = toHSLString(color);
@@ -115,7 +115,9 @@ function renderGrid() {
     // Swatch
     const swatch = document.createElement('div');
     swatch.className = 'card-swatch';
+    // Nota: swatch.style.background es inline intencional — el color es dinámico (valor único por color generado)
     swatch.style.background = bg;
+    // cursor:pointer se define en CSS (.card-swatch), no hace falta inline
 
     // Hint de copia
     const hint = document.createElement('div');
@@ -129,7 +131,7 @@ function renderGrid() {
     const lockBadge = document.createElement('div');
     lockBadge.className = 'lock-badge';
     lockBadge.setAttribute('aria-hidden', 'true');
-    lockBadge.innerHTML = '🔒 bloqueado';
+    lockBadge.textContent = '🔒 bloqueado';
     swatch.appendChild(lockBadge);
 
     // Info bar
@@ -168,7 +170,6 @@ function renderGrid() {
     };
 
     swatch.addEventListener('click', copyAction);
-    swatch.style.cursor = 'pointer';
 
     card.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyAction(); }
@@ -196,22 +197,124 @@ function renderGrid() {
 
       // Mostrar/ocultar botón "Desbloquear todo"
       const hasLocked = state.colors.some(c => c.locked);
-      btnUnlockAll.style.display = hasLocked ? '' : 'none';
+      btnUnlockAll.classList.toggle('hidden', !hasLocked);
 
       showToast(isNowLocked ? '🔒 Color bloqueado' : '🔓 Color desbloqueado');
     });
   });
 
-  // Botón de guardar (solo si no existe ya)
+  // Botones de acción (solo si no existen ya)
   if (!document.getElementById('btn-save-palette')) {
+    const actionBar = document.createElement('div');
+    actionBar.id = 'palette-action-bar';
+    actionBar.className = 'palette-action-bar';
+
     const btnSave = document.createElement('button');
     btnSave.id = 'btn-save-palette';
     btnSave.className = 'btn-save-palette';
     btnSave.setAttribute('aria-label', 'Guardar paleta actual');
     btnSave.innerHTML = '💾 Guardar paleta';
     btnSave.addEventListener('click', savePalette);
-    grid.insertAdjacentElement('afterend', btnSave);
+
+    const btnExport = document.createElement('button');
+    btnExport.id = 'btn-export-palette';
+    btnExport.className = 'btn-export-palette';
+    btnExport.setAttribute('aria-label', 'Exportar paleta como imagen PNG');
+    btnExport.innerHTML = '🖼 Exportar PNG';
+    btnExport.addEventListener('click', exportPalettePNG);
+
+    actionBar.appendChild(btnSave);
+    actionBar.appendChild(btnExport);
+    grid.insertAdjacentElement('afterend', actionBar);
   }
+}
+
+/* ───────────────────────────────────────────
+   EXPORTAR PALETA COMO PNG — Canvas API
+─────────────────────────────────────────── */
+
+function exportPalettePNG() {
+  const colors  = state.colors;
+  const count   = colors.length;
+
+  // Layout: cuántas columnas según cantidad de colores
+  const cols    = count <= 6 ? 3 : count === 8 ? 4 : 3;
+  const rows    = Math.ceil(count / cols);
+
+  // Dimensiones de cada celda
+  const CELL_W  = 200;
+  const SWATCH_H = 180;
+  const LABEL_H  = 48;
+  const CELL_H  = SWATCH_H + LABEL_H;
+  const PADDING  = 16;  // espacio entre celdas
+  const MARGIN   = 24;  // margen exterior
+
+  // Tamaño total del canvas
+  const canvasW = cols * CELL_W + (cols - 1) * PADDING + MARGIN * 2;
+  const canvasH = rows * CELL_H + (rows - 1) * PADDING + MARGIN * 2;
+
+  // Crear canvas en memoria (no se inserta en el DOM)
+  const canvas  = document.createElement('canvas');
+  canvas.width  = canvasW;
+  canvas.height = canvasH;
+  const ctx     = canvas.getContext('2d');
+
+  // Fondo según el tema activo
+  const isLight = document.body.classList.contains('light');
+  ctx.fillStyle = isLight ? '#f5f4f0' : '#0e0e10';
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  // Dibuja cada color
+  colors.forEach((color, index) => {
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+
+    const x = MARGIN + col * (CELL_W + PADDING);
+    const y = MARGIN + row * (CELL_H + PADDING);
+
+    // Swatch de color
+    const hsl = `hsl(${color.h}, ${color.s}%, ${color.l}%)`;
+    ctx.fillStyle = hsl;
+
+    // Rounded rect para el swatch
+    roundRect(ctx, x, y, CELL_W, SWATCH_H, 16);
+    ctx.fill();
+
+    // Fondo de la etiqueta (mismo color que el fondo de la imagen)
+    ctx.fillStyle = isLight ? '#f5f4f0' : '#0e0e10';
+    ctx.fillRect(x, y + SWATCH_H, CELL_W, LABEL_H);
+
+    // Código del color (usa el formato activo)
+    const code    = formatColor(color);
+    const textClr = isLight ? '#1a1a1e' : '#e8e8f0';
+    ctx.fillStyle = textClr;
+    ctx.font      = 'bold 14px "DM Mono", "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(code, x + CELL_W / 2, y + SWATCH_H + LABEL_H / 2);
+  });
+
+  // Convertir canvas a PNG y disparar descarga
+  const dataURL  = canvas.toDataURL('image/png');
+  const link     = document.createElement('a');
+  link.href      = dataURL;
+  link.download  = `paleta-${Date.now()}.png`;
+  link.click();
+
+  showToast('🖼 PNG exportado');
+}
+
+/** Dibuja un rectángulo con esquinas redondeadas en el canvas */
+function roundRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height);
+  ctx.lineTo(x, y + height);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
 }
 
 /* ───────────────────────────────────────────

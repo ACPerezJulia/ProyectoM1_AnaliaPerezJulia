@@ -36,6 +36,9 @@ body.light {
   --shadow-sm:0 2px 12px rgba(0,0,0,0.08);
 }
 
+/* Utilidad: ocultar elementos */
+.hidden { display: none; }
+
 /* RESET */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -315,6 +318,7 @@ body {
   aspect-ratio: 1 / 1.1;
   position: relative;
   transition: filter var(--transition);
+  cursor: pointer;
 }
 
 .card-swatch::after {
@@ -437,11 +441,18 @@ body {
 /* =============================================
    SAVE BUTTON (below grid)
    ============================================= */
+/* Action bar (guardar + exportar) */
+.palette-action-bar {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
 .btn-save-palette {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 1.5rem;
   padding: 0.5rem 1.2rem;
   background: transparent;
   color: var(--text);
@@ -458,6 +469,29 @@ body {
   background: var(--surface);
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* Botón exportar PNG */
+.btn-export-palette {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.2rem;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-2);
+  border-radius: 100px;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+  letter-spacing: 0.01em;
+}
+
+.btn-export-palette:hover {
+  background: var(--surface);
+  border-color: var(--accent-2);
+  color: var(--accent-2);
 }
 
 /* =============================================
