@@ -174,12 +174,31 @@ function renderGrid() {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyAction(); }
     });
 
-    // Bloquear / desbloquear
+    // Bloquear / desbloquear — muta el DOM sin re-render para evitar el salto visual
     lockBtn.addEventListener('click', e => {
       e.stopPropagation();
-      state.colors[index].locked = !state.colors[index].locked;
-      showToast(state.colors[index].locked ? '🔒 Color bloqueado' : '🔓 Color desbloqueado');
-      renderGrid();
+      const isNowLocked = !state.colors[index].locked;
+      state.colors[index].locked = isNowLocked;
+
+      // Actualizar clases de la card
+      card.classList.toggle('locked', isNowLocked);
+
+      // Actualizar botón
+      lockBtn.innerHTML = isNowLocked
+        ? `🔒 <span class="lock-label">on</span>`
+        : `🔓 <span class="lock-label">off</span>`;
+      lockBtn.setAttribute('aria-pressed', String(isNowLocked));
+      lockBtn.setAttribute('aria-label', isNowLocked ? 'Desbloquear color' : 'Bloquear color');
+
+      // Actualizar aria-label de la card
+      const currentCode = formatColor(state.colors[index]);
+      card.setAttribute('aria-label', `Color ${currentCode}${isNowLocked ? ', bloqueado' : ''}. Clic para copiar.`);
+
+      // Mostrar/ocultar botón "Desbloquear todo"
+      const hasLocked = state.colors.some(c => c.locked);
+      btnUnlockAll.style.display = hasLocked ? '' : 'none';
+
+      showToast(isNowLocked ? '🔒 Color bloqueado' : '🔓 Color desbloqueado');
     });
   });
 
@@ -424,7 +443,10 @@ function loadPalette(palette) {
 /* ───────────────────────────────────────────
    BOTÓN LIMPIAR TODO
 ─────────────────────────────────────────── */
-btnClearAll.addEventListener('click', clearAllSaved);: barra espaciadora o "G"
+btnClearAll.addEventListener('click', clearAllSaved);
+
+/* ───────────────────────────────────────────
+   SHORTCUT TECLADO: barra espaciadora o "G"
    (cuando el foco no está en un botón/input)
 ─────────────────────────────────────────── */
 document.addEventListener('keydown', e => {

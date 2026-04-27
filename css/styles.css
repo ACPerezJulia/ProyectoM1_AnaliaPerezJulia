@@ -739,6 +739,32 @@ kbd.footer-key {
   /* Swatch más alto en mobile para que sea más fácil de tocar */
   .card-swatch { aspect-ratio: 1 / 1.3; }
 
+  /* Código centrado, 1 línea, más chico */
+  .card-info {
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem 0.4rem 0.4rem;
+    gap: 0.3rem;
+  }
+
+  .card-code {
+    font-size: 0.58rem;
+    word-break: normal;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    width: 100%;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-lock {
+    padding: 3px 6px;
+    font-size: 0.7rem;
+  }
+
+  .btn-lock .lock-label { font-size: 0.5rem; }
+
   .saved-swatches { gap: 4px; }
   .saved-swatch { width: 26px; height: 26px; border-radius: 5px; }
 
