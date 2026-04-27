@@ -30,6 +30,8 @@ body.light {
   --border-2: #c8c5bc;
   --text:     #1a1a1e;
   --muted:    #888680;
+  --accent:   #5a7a00;      /* verde oscuro en lugar de fluorescente */
+  --accent-2: #b0006a;      /* rosa oscuro */
   --shadow:   0 8px 40px rgba(0,0,0,0.12);
   --shadow-sm:0 2px 12px rgba(0,0,0,0.08);
 }
@@ -136,23 +138,24 @@ body {
 
 /* Theme toggle */
 .btn-theme {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: transparent;
+  border: none;
   border-radius: 100px;
   width: 38px;
   height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: 1.25rem;
   cursor: pointer;
-  transition: background var(--transition), border-color var(--transition), transform var(--transition);
+  transition: transform var(--transition), opacity var(--transition);
   flex-shrink: 0;
+  opacity: 0.75;
 }
 
 .btn-theme:hover {
-  border-color: var(--accent);
-  transform: rotate(20deg) scale(1.1);
+  transform: rotate(20deg) scale(1.2);
+  opacity: 1;
 }
 
 /* =============================================
@@ -583,7 +586,44 @@ body {
   background: rgba(245,100,200,0.1);
 }
 
-/* Nombre editable de paleta guardada */
+/* Botón desbloquear todo */
+.btn-unlock-all {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  padding: 0.3rem 0.8rem;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition);
+  white-space: nowrap;
+}
+
+.btn-unlock-all:hover {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+}
+
+/* Botón cargar paleta guardada */
+.btn-load-palette {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: color var(--transition), background var(--transition);
+  line-height: 1;
+  title: "Cargar paleta";
+}
+
+.btn-load-palette:hover {
+  color: var(--accent);
+  background: rgba(200,245,100,0.1);
+}
 .palette-name-input {
   font-family: var(--font-mono);
   font-size: 0.7rem;
@@ -629,6 +669,17 @@ body {
 .footer-key {
   display: inline-block;
   margin: 0 0.1em;
+}
+
+kbd.footer-key {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--text);
+  letter-spacing: 0.03em;
 }
 
 /* =============================================
@@ -716,13 +767,14 @@ body {
 }
 
 /* =============================================
-   COPY FLASH ANIMATION
+   COPY FLASH ANIMATION — suave
    ============================================= */
 @keyframes copy-flash {
-  0%   { filter: brightness(1.6) saturate(0.4); }
-  100% { filter: brightness(1)   saturate(1); }
+  0%   { opacity: 0.6; }
+  50%  { opacity: 0.85; }
+  100% { opacity: 1; }
 }
 
 .color-card.copied .card-swatch {
-  animation: copy-flash 0.5s ease forwards;
+  animation: copy-flash 0.6s ease forwards;
 }

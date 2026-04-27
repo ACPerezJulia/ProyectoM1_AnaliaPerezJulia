@@ -24,6 +24,7 @@ const savedList    = document.getElementById('saved-list');
 const emptyState   = document.getElementById('empty-state');
 const btnGenerate  = document.getElementById('btn-generate');
 const btnClearAll  = document.getElementById('btn-clear-all');
+const btnUnlockAll = document.getElementById('btn-unlock-all');
 const toast        = document.getElementById('toast');
 
 /* ───────────────────────────────────────────
@@ -94,6 +95,10 @@ function generateColors() {
 
 function renderGrid() {
   grid.innerHTML = '';
+
+  // Mostrar/ocultar "Desbloquear todo" según si hay algún color bloqueado
+  const hasLocked = state.colors.some(c => c.locked);
+  btnUnlockAll.style.display = hasLocked ? '' : 'none';
 
   state.colors.forEach((color, index) => {
     const bg  = toHSLString(color);
@@ -316,6 +321,14 @@ function renderSaved() {
       if (idx !== -1) { state.saved[idx].name = nameInput.value; persistSaved(); }
     });
 
+    // Botón cargar paleta
+    const loadBtn = document.createElement('button');
+    loadBtn.className = 'btn-load-palette';
+    loadBtn.setAttribute('aria-label', 'Cargar esta paleta como activa');
+    loadBtn.title = 'Cargar paleta';
+    loadBtn.textContent = '↩';
+    loadBtn.addEventListener('click', () => loadPalette(palette));
+
     // Delete btn
     const delBtn = document.createElement('button');
     delBtn.className = 'btn-delete-saved';
@@ -326,6 +339,7 @@ function renderSaved() {
     row.appendChild(swatchGroup);
     row.appendChild(nameInput);
     row.appendChild(meta);
+    row.appendChild(loadBtn);
     row.appendChild(delBtn);
     savedList.appendChild(row);
   });
@@ -377,12 +391,40 @@ btnGenerate.addEventListener('click', () => {
 });
 
 /* ───────────────────────────────────────────
-   BOTÓN LIMPIAR TODO
+   BOTÓN DESBLOQUEAR TODO
 ─────────────────────────────────────────── */
-btnClearAll.addEventListener('click', clearAllSaved);
+btnUnlockAll.addEventListener('click', () => {
+  state.colors.forEach(c => c.locked = false);
+  renderGrid();
+  showToast('🔓 Todos los colores desbloqueados');
+});
 
 /* ───────────────────────────────────────────
-   SHORTCUT TECLADO: barra espaciadora o "G"
+   CARGAR PALETA GUARDADA
+─────────────────────────────────────────── */
+function loadPalette(palette) {
+  // Carga los colores guardados como nueva paleta activa (sin bloqueo)
+  state.colors = palette.colors.map(c => ({ ...c, locked: false }));
+  state.size   = state.colors.length;
+
+  // Sincroniza el botón de tamaño activo si coincide
+  document.querySelectorAll('[data-size]').forEach(b => {
+    const match = parseInt(b.dataset.size) === state.size;
+    b.classList.toggle('active', match);
+    b.setAttribute('aria-pressed', String(match));
+  });
+
+  renderGrid();
+  const name = palette.name ? `"${palette.name}"` : 'la paleta';
+  showToast(`✅ Cargada ${name}`);
+  // Scroll suave hacia arriba para ver la paleta
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ───────────────────────────────────────────
+   BOTÓN LIMPIAR TODO
+─────────────────────────────────────────── */
+btnClearAll.addEventListener('click', clearAllSaved);: barra espaciadora o "G"
    (cuando el foco no está en un botón/input)
 ─────────────────────────────────────────── */
 document.addEventListener('keydown', e => {
