@@ -120,6 +120,13 @@ function renderGrid() {
     hint.style.color = txt;
     swatch.appendChild(hint);
 
+    // Badge de bloqueo (visible cuando está locked)
+    const lockBadge = document.createElement('div');
+    lockBadge.className = 'lock-badge';
+    lockBadge.setAttribute('aria-hidden', 'true');
+    lockBadge.innerHTML = '🔒 bloqueado';
+    swatch.appendChild(lockBadge);
+
     // Info bar
     const info = document.createElement('div');
     info.className = 'card-info';
@@ -132,7 +139,9 @@ function renderGrid() {
     lockBtn.className = 'btn-lock';
     lockBtn.setAttribute('aria-label', color.locked ? 'Desbloquear color' : 'Bloquear color');
     lockBtn.setAttribute('aria-pressed', String(color.locked));
-    lockBtn.textContent = color.locked ? '🔒' : '🔓';
+    lockBtn.innerHTML = color.locked
+      ? `🔒 <span class="lock-label">on</span>`
+      : `🔓 <span class="lock-label">off</span>`;
 
     info.appendChild(codeEl);
     info.appendChild(lockBtn);
@@ -143,14 +152,14 @@ function renderGrid() {
 
     /* ─── EVENTOS DE LA CARD ─── */
 
-    // Copiar HEX al portapapeles al hacer clic (o Enter/Space)
+    // Copiar según el formato activo (HEX o HSL)
     const copyAction = () => {
-      const hexCode = hslToHex(color.h, color.s, color.l);
-      copyToClipboard(hexCode);
+      const codeToCopy = formatColor(color);
+      copyToClipboard(codeToCopy);
       // Flash visual
       card.classList.add('copied');
       card.addEventListener('animationend', () => card.classList.remove('copied'), { once: true });
-      showToast(`Copiado: ${hexCode}`);
+      showToast(`Copiado: ${codeToCopy}`);
     };
 
     swatch.addEventListener('click', copyAction);
@@ -238,6 +247,7 @@ function persistSaved() {
 function savePalette() {
   const entry = {
     id: Date.now(),
+    name: '',
     colors: state.colors.map(c => ({ h: c.h, s: c.s, l: c.l })),
     date: new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })
   };
@@ -291,7 +301,20 @@ function renderSaved() {
     // Meta info
     const meta = document.createElement('span');
     meta.className = 'saved-meta';
-    meta.textContent = `${palette.colors.length} col · ${palette.date}`;
+    meta.textContent = `${palette.colors.length} · ${palette.date}`;
+
+    // Nombre editable
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'palette-name-input';
+    nameInput.placeholder = 'sin nombre';
+    nameInput.value = palette.name || '';
+    nameInput.setAttribute('aria-label', 'Nombre de la paleta');
+    nameInput.maxLength = 24;
+    nameInput.addEventListener('input', () => {
+      const idx = state.saved.findIndex(p => p.id === palette.id);
+      if (idx !== -1) { state.saved[idx].name = nameInput.value; persistSaved(); }
+    });
 
     // Delete btn
     const delBtn = document.createElement('button');
@@ -301,6 +324,7 @@ function renderSaved() {
     delBtn.addEventListener('click', () => deleteSaved(palette.id));
 
     row.appendChild(swatchGroup);
+    row.appendChild(nameInput);
     row.appendChild(meta);
     row.appendChild(delBtn);
     savedList.appendChild(row);
@@ -371,9 +395,32 @@ document.addEventListener('keydown', e => {
 });
 
 /* ───────────────────────────────────────────
+   TEMA CLARO / OSCURO
+─────────────────────────────────────────── */
+const btnTheme  = document.getElementById('btn-theme');
+const themeIcon = document.getElementById('theme-icon');
+const LS_THEME  = 'paleta_theme';
+
+function applyTheme(light) {
+  document.body.classList.toggle('light', light);
+  themeIcon.textContent = light ? '🌙' : '☀️';
+  btnTheme.setAttribute('aria-label', light ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro');
+}
+
+btnTheme.addEventListener('click', () => {
+  const isLight = !document.body.classList.contains('light');
+  localStorage.setItem(LS_THEME, isLight ? 'light' : 'dark');
+  applyTheme(isLight);
+});
+
+/* ───────────────────────────────────────────
    INIT
 ─────────────────────────────────────────── */
 function init() {
+  // Restaurar tema guardado
+  const savedTheme = localStorage.getItem(LS_THEME);
+  if (savedTheme === 'light') applyTheme(true);
+
   loadSaved();
   generateColors();
   renderGrid();
