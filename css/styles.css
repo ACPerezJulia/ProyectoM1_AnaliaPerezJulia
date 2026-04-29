@@ -464,7 +464,8 @@ body {
   flex-wrap: wrap;
 }
 
-.btn-save-palette {
+.btn-save-palette,
+.btn-export-palette {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -508,23 +509,6 @@ body {
 .export-name-input::placeholder {
   color: var(--muted);
   font-style: italic;
-}
-
-/* Botón exportar PNG */
-.btn-export-palette {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1.2rem;
-  background: transparent;
-  color: var(--text);
-  border: 1px solid var(--border-2);
-  border-radius: 100px;
-  font-family: var(--font-body);
-  font-size: 0.82rem;
-  cursor: pointer;
-  transition: background var(--transition), border-color var(--transition), color var(--transition);
-  letter-spacing: 0.01em;
 }
 
 .btn-export-palette:hover {
@@ -583,7 +567,6 @@ body {
   padding: 2rem 0;
 }
 
-.empty-state.hidden { display: none; }
 
 /* Saved palette row */
 .saved-list {
@@ -679,6 +662,7 @@ body {
   background: var(--surface);
   color: var(--text);
 }
+
 .btn-unlock-all {
   background: none;
   border: 1px solid var(--border);
@@ -698,6 +682,7 @@ body {
   color: var(--accent-2);
 }
 
+
 /* Botón cargar paleta guardada */
 .btn-load-palette {
   background: none;
@@ -715,6 +700,7 @@ body {
   color: var(--accent);
   background: rgba(200,245,100,0.1);
 }
+
 .palette-name-input {
   font-family: var(--font-mono);
   font-size: 0.7rem;
@@ -866,7 +852,6 @@ kbd.footer-key {
 .saved-meta     { font-size: 0.6rem; }
 .palette-name-input { width: 100%; }
 .control-group  { flex-wrap: wrap; gap: 0.5rem; }
-.saved-swatches { flex-wrap: wrap; }
 
 /* =============================================
    TABLET — min-width: 421px
@@ -932,15 +917,6 @@ kbd.footer-key {
   .saved-palette { flex-wrap: nowrap; gap: 0.6rem; }
   .saved-meta   { font-size: 0.65rem; }
   .palette-name-input { width: 110px; }
-}
-
-/* =============================================
-   DESKTOP GRANDE — min-width: 901px
-   ============================================= */
-@media (min-width: 901px) {
-  .palette-grid {
-    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
-  }
 }
 
 /* =============================================
