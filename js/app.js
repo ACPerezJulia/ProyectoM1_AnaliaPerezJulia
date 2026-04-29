@@ -59,12 +59,12 @@ const toast        = document.getElementById('toast');
    UTILIDADES DE COLOR
 ─────────────────────────────────────────── */
 
-/** Genera un objeto color HSL aleatorio */
+/** Genera un objeto color HSL 100% aleatorio */
 function randomColor() {
   return {
     h: Math.floor(Math.random() * 360),
-    s: Math.floor(30 + Math.random() * 65),   // 30–95% para evitar gris absoluto
-    l: Math.floor(30 + Math.random() * 45),   // 30–75% para evitar blanco/negro puro
+    s: Math.floor(Math.random() * 101),
+    l: Math.floor(Math.random() * 101),
     locked: false
   };
 }
@@ -110,8 +110,8 @@ function textOnColor(l) {
 function makeColor(h = Math.floor(Math.random() * 360)) {
   return {
     h,
-    s: Math.floor(40 + Math.random() * 50),   // 40–90%
-    l: Math.floor(35 + Math.random() * 35),   // 35–70%
+    s: Math.floor(Math.random() * 101),
+    l: Math.floor(Math.random() * 101),
     locked: false
   };
 }
@@ -163,14 +163,16 @@ function buildRandom(count) {
  */
 function buildAnalogous(count, anchorH = null) {
   const baseH  = anchorH !== null ? anchorH : Math.floor(Math.random() * 360);
-  const spread = 60;  // arco total en grados
+  const spread = 60;
+  const baseS  = Math.floor(10 + Math.random() * 91);  // 10–100%: evita gris absoluto
+  const baseL  = Math.floor(8  + Math.random() * 85);  // 8–92%: evita negro/blanco puro
   return Array.from({ length: count }, (_, i) => {
     const step = count > 1 ? (spread / (count - 1)) : 0;
     const h    = wrapHue(baseH - spread / 2 + i * step);
     return {
       h,
-      s: Math.floor(50 + Math.random() * 35),
-      l: Math.floor(38 + Math.random() * 28),
+      s: Math.min(100, Math.max(10, Math.floor(baseS + (Math.random() - 0.5) * 20))),
+      l: Math.min(92,  Math.max(8,  Math.floor(baseL + (Math.random() - 0.5) * 20))),
       locked: false
     };
   });
@@ -185,15 +187,17 @@ function buildComplementary(count, anchorH = null) {
   const baseH  = anchorH !== null ? anchorH : Math.floor(Math.random() * 360);
   const compH  = wrapHue(baseH + 180);
   const half   = Math.ceil(count / 2);
+  const baseS  = Math.floor(10 + Math.random() * 91);  // 10–100%
+  const baseL  = Math.floor(8  + Math.random() * 85);  // 8–92%
   const colors = [];
 
   for (let i = 0; i < count; i++) {
-    const h    = i < half ? baseH : compH;
-    const jitter = (Math.random() - 0.5) * 20;  // ±10° de variación
+    const h      = i < half ? baseH : compH;
+    const jitter = (Math.random() - 0.5) * 20;
     colors.push({
       h: wrapHue(h + jitter),
-      s: Math.floor(50 + Math.random() * 40),
-      l: Math.floor(30 + Math.random() * 40),
+      s: Math.min(100, Math.max(10, Math.floor(baseS + (Math.random() - 0.5) * 20))),
+      l: Math.min(92,  Math.max(8,  Math.floor(baseL + (Math.random() - 0.5) * 20))),
       locked: false
     });
   }
@@ -205,15 +209,17 @@ function buildComplementary(count, anchorH = null) {
  * Los colores se distribuyen en grupos alrededor de cada vértice.
  */
 function buildTriadic(count, anchorH = null) {
-  const baseH   = anchorH !== null ? anchorH : Math.floor(Math.random() * 360);
-  const roots   = [baseH, wrapHue(baseH + 120), wrapHue(baseH + 240)];
+  const baseH  = anchorH !== null ? anchorH : Math.floor(Math.random() * 360);
+  const roots  = [baseH, wrapHue(baseH + 120), wrapHue(baseH + 240)];
+  const baseS  = Math.floor(10 + Math.random() * 91);  // 10–100%
+  const baseL  = Math.floor(8  + Math.random() * 85);  // 8–92%
   return Array.from({ length: count }, (_, i) => {
     const root   = roots[i % 3];
-    const jitter = (Math.random() - 0.5) * 24;  // ±12° de variación
+    const jitter = (Math.random() - 0.5) * 24;
     return {
       h: wrapHue(root + jitter),
-      s: Math.floor(45 + Math.random() * 45),
-      l: Math.floor(35 + Math.random() * 35),
+      s: Math.min(100, Math.max(10, Math.floor(baseS + (Math.random() - 0.5) * 20))),
+      l: Math.min(92,  Math.max(8,  Math.floor(baseL + (Math.random() - 0.5) * 20))),
       locked: false
     };
   });
@@ -320,7 +326,7 @@ function attachCardDragAndDrop(card, index) {
     state.colors[fromIndex] = state.colors[toIndex];
     state.colors[toIndex]   = temp;
 
-    renderGrid();
+    renderGrid(true);
     showToast(UI_TEXT.reorderedToast);
   });
 }
@@ -423,11 +429,15 @@ function ensurePaletteActionBar() {
   grid.insertAdjacentElement('afterend', actionBar);
 }
 
-function renderGrid() {
+function renderGrid(skipAnim = false) {
   grid.innerHTML = '';
 
   updateUnlockAllVisibility();
-  state.colors.forEach((color, index) => grid.appendChild(createColorCard(color, index)));
+  state.colors.forEach((color, index) => {
+    const card = createColorCard(color, index);
+    if (skipAnim) card.style.animation = 'none';
+    grid.appendChild(card);
+  });
   ensurePaletteActionBar();
 }
 
