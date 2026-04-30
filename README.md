@@ -39,7 +39,7 @@ Al abrir la app se genera una paleta automáticamente. Podés usar el botón **G
 | Formato | Visualizá los códigos en HEX o HSL |
 | Copiar | Clic sobre el color para copiar su HEX |
 | Bloquear | 🔒 Fija colores para que no cambien al regenerar |
-| Reordenar | Drag & drop para cambiar el orden _(funcionalidad en desktop)_ |
+| Reordenar | 🖐 Drag & drop para cambiar el orden _(funcionalidad en desktop)_ |
 | Guardar | 💾 Guarda paletas en el navegador con nombre editable |
 | Exportar | 🖼 Descargá la paleta como PNG con nombre y marca de Colorfly Studio |
 | Tema | ☀️ / 🌙 Modo claro u oscuro, se recuerda entre sesiones |
